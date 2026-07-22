@@ -1,0 +1,10 @@
+node_modules
+.env
+dist
+
+/generated/prisma
+
+# SQLite
+prisma/dev.db
+*.db
+*.db-journal
