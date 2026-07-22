@@ -34,8 +34,8 @@ app.use(express.json());
 app.use(cookieParser());
 
 // Basic health check
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'Namaz Journal API is running' });
+app.get("/", (req, res) => {
+  res.send("Namaz Journal API is running");
 });
 
 // Authentication routes
