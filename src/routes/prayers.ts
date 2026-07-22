@@ -197,14 +197,15 @@ router.get('/stats', authenticate, async (req, res) => {
 // Get prayers for a specific date
 router.get('/:date', authenticate, async (req, res) => {
   try {
-    const { date } = req.params; // format: YYYY-MM-DD
+    const dateParam = req.params.date;
+    const date = Array.isArray(dateParam) ? dateParam[0] : dateParam; // format: YYYY-MM-DD
     const userId = req.user?.userId;
 
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
       return res.status(400).json({ error: 'Invalid date format (YYYY-MM-DD)' });
     }
 
@@ -227,7 +228,8 @@ router.get('/:date', authenticate, async (req, res) => {
 // Upsert (create or update) prayers for a specific date
 router.put('/:date', authenticate, async (req, res) => {
   try {
-    const { date } = req.params; // format: YYYY-MM-DD
+    const dateParam = req.params.date;
+    const date = Array.isArray(dateParam) ? dateParam[0] : dateParam; // format: YYYY-MM-DD
     const userId = req.user?.userId;
     const { fajr, dhuhr, asr, maghrib, isha, notes } = req.body;
 
@@ -235,7 +237,7 @@ router.put('/:date', authenticate, async (req, res) => {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
       return res.status(400).json({ error: 'Invalid date format (YYYY-MM-DD)' });
     }
 
