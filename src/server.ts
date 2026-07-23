@@ -35,7 +35,7 @@ app.use(cookieParser());
 
 // Basic health check
 app.get("/", (req, res) => {
-  res.send("Namaz Journal API is running");
+  res.send("Namaz Journal Backend Running 🚀");
 });
 
 // Authentication routes
