@@ -1,3 +1,5 @@
+import crypto from "crypto";
+import transporter from "../utils/mailer";
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
@@ -135,6 +137,153 @@ router.post('/logout', (req, res) => {
   res.clearCookie('token');
   res.json({ message: 'Logged out successfully' });
 });
+
+
+    //Forgot password
+      router.post("/forgot-password", async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        error: "Email is required."
+      });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email }
+    });
+
+    // Security: same response even if email doesn't exist
+    if (!user) {
+      return res.json({
+        message: "If an account with that email exists, a reset link has been sent."
+      });
+    }
+
+    // Generate token
+    const resetToken = crypto.randomBytes(32).toString("hex");
+    const resetExpiry = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+
+    // Save token
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        resetToken,
+        resetExpiry
+      }
+    });
+
+    // Frontend URL
+    const resetLink = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+
+    // Send email
+    console.log("Sending email to:", user.email);
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: user.email,
+      subject: "Reset Your Namaz Journal Password",
+      html: `
+        <h2>Forgot your password?</h2>
+        <p>Click the button below to reset your password.</p>
+
+        <a href="${resetLink}"
+           style="
+             display:inline-block;
+             padding:12px 20px;
+             background:#16a34a;
+             color:white;
+             text-decoration:none;
+             border-radius:8px;
+             font-weight:bold;
+           ">
+          Reset Password
+        </a>
+
+        <p>This link will expire in 15 minutes.</p>
+      `
+    });
+    console.log("Email sent successfully");
+
+    res.json({
+      message: "If an account with that email exists, a reset link has been sent."
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({
+      error: "Internal server error."
+    });
+  }
+});
+
+
+    // Reset password
+router.post("/reset-password", async (req, res) => {
+  try {
+    console.log("🔐 Reset password request received.");
+
+    const { token, password } = req.body;
+
+    if (!token || !password) {
+      return res.status(400).json({
+        error: "Token and password are required."
+      });
+    }
+
+    if (password.length < 8) {
+      return res.status(400).json({
+        error: "Password must be at least 8 characters."
+      });
+    }
+
+    const user = await prisma.user.findFirst({
+      where: {
+        resetToken: token,
+        resetExpiry: {
+          gt: new Date()
+        }
+      }
+    });
+
+    if (!user) {
+      console.log("❌ Invalid or expired reset token.");
+
+      return res.status(400).json({
+        error: "Reset link is invalid or has expired."
+      });
+    }
+
+    console.log("✅ User found:", user.email);
+
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    await prisma.user.update({
+      where: {
+        id: user.id
+      },
+      data: {
+        passwordHash,
+        resetToken: null,
+        resetExpiry: null
+      }
+    });
+
+    console.log("✅ Password reset successfully for:", user.email);
+
+    res.json({
+      message: "Password reset successfully."
+    });
+
+  } catch (err) {
+    console.error("❌ Reset password error:", err);
+
+    res.status(500).json({
+      error: "Internal server error."
+    });
+  }
+});
+
 
 router.get('/me', authenticate, async (req, res) => {
   try {
