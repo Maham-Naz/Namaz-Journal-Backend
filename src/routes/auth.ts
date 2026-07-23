@@ -14,7 +14,7 @@ const USERNAME_REGEX = /^[a-zA-Z0-9_]{4,25}$/;
 
 router.post('/register', async (req, res) => {
   try {
-    const { fullName, username, password } = req.body;
+    const { fullName, username, email, password } = req.body;
 
     if (!fullName || !username || !password) {
       return res.status(400).json({ error: 'All fields are required' });
@@ -37,17 +37,30 @@ router.post('/register', async (req, res) => {
       return res.status(409).json({ error: 'Username already exists.' });
     }
 
+      // Check if email exists
+    const existingEmail = await prisma.user.findUnique({
+    where: { email }
+    });
+
+    if (existingEmail) {
+    return res.status(409).json({
+      error: 'Email already exists.'
+      });
+    }
+
+
     // Hash password
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
 
     // Create user
     const newUser = await prisma.user.create({
-      data: {
-        fullName,
-        username,
-        passwordHash
-      }
+    data: {
+      fullName,
+      username,
+      email,
+      passwordHash
+    }
     });
 
     // Generate token
@@ -89,6 +102,7 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid username or password.' });
     }
 
+     
     // Generate token
     const expiresIn = rememberMe ? '30d' : '1d';
     const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn });
